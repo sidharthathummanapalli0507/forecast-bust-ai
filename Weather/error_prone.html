@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Error-Prone Area Intelligence | FORECAST GUARDIAN</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/error_prone.css"/>
+</head>
+<body>
+  
+  <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 2"/><path d="M8 20 Q14 10 20 20 Q26 30 32 20" stroke="#fff" stroke-width="2"/><circle cx="20" cy="20" r="3" fill="#fff"/></svg>
+      </div>
+      <div>
+        <span class="brand-name">ForecastBust<span class="brand-accent">AI</span></span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Hub</a>
+      <a href="fingerprint.html" class="nav-link">Fingerprinting</a>
+      <a href="rainfall.html" class="nav-link">Rainfall Forecast</a>
+      <a href="aws.html" class="nav-link">AWS Live Stations</a>
+      <a href="bust.html" class="nav-link">Bust Engine</a>
+      <a href="error_prone.html" class="nav-link active">Error-Prone Intelligence</a>
+    </div>
+  </nav>
+
+  <!-- Sub Header -->
+  <div class="ep-subheader">
+    <div class="ep-title-block">
+      <h1>ERROR-PRONE AREA INTELLIGENCE</h1>
+      <p>Where is the forecast least reliable — and why?</p>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 16px; font-size: 0.75rem; color: #fff;">
+        <span>Mode:</span>
+        <select id="modeSwitch" style="background: transparent; color: #fff; border: none; font-weight: 700; outline: none; cursor: pointer;">
+          <option value="demo" style="color: #000;">DEMO DATA</option>
+          <option value="live" style="color: #000;">LIVE DATA</option>
+        </select>
+      </div>
+      <div style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); padding:4px 10px; border-radius:16px; color:#60A5FA; font-size:0.75rem; font-weight:700;">
+        ⚙ PROTOTYPE ERROR-PRONE SCORE
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="ep-filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Date</span>
+      <input type="date" class="filter-select" id="dateSelect" />
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Region</span>
+      <select class="filter-select" id="regionSelect">
+        <option value="all">All Regions</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Lead Day</span>
+      <select class="filter-select" id="leadDaySelect">
+        <option value="1">Day 1</option><option value="2">Day 2</option><option value="3">Day 3</option>
+        <option value="4">Day 4</option><option value="5">Day 5</option><option value="6">Day 6</option>
+        <option value="7">Day 7</option><option value="8">Day 8</option><option value="9">Day 9</option>
+        <option value="10">Day 10</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Variable</span>
+      <select class="filter-select" id="varSelect">
+        <option value="rainfall">Rainfall</option><option value="temperature">Temperature</option>
+        <option value="wind">Wind</option><option value="pressure">Pressure</option><option value="humidity">Humidity</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Weather Event</span>
+      <select class="filter-select" id="eventSelect">
+        <option value="all">All Events</option><option value="monsoon">Monsoon</option>
+        <option value="cyclone">Cyclone</option><option value="heavy_rainfall">Heavy Rainfall</option>
+        <option value="heat_wave">Heat Wave</option><option value="western_disturbance">Western Disturbance</option>
+      </select>
+    </div>
+    
+    <div style="flex: 1;"></div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.7rem; color: var(--navy-400);">
+      <div><span id="apiStatusIMD">IMD: ● </span> | <span id="apiStatusOM">Open-Meteo: ● </span></div>
+      <div>Last Updated: <span id="lastUpdated" style="font-weight:600; color:var(--navy);">--</span></div>
+    </div>
+    <button class="filter-select" id="refreshBtn" style="background: var(--navy); color: white; border: none; padding: 6px 16px;">↻ Refresh</button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="ep-main">
+    
+    <!-- Map Panel -->
+    <div class="map-panel">
+      <div class="panel-header">
+        <div class="panel-title">India Forecast Reliability Map</div>
+      </div>
+      <div id="ep-map"></div>
+      <div class="map-legend">
+        <span>Error-Prone Score:</span>
+        <div class="legend-item"><span class="legend-swatch" style="background:#10B981"></span>Low <20</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F59E0B"></span>Moderate 20-40</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F97316"></span>Elevated 40-60</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#EF4444"></span>High 60-80</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#991B1B"></span>Critical >80</div>
+      </div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div class="detail-panel">
+      <div class="detail-card">
+        <div class="score-header">
+          <div>
+            <div class="region-name" id="detRegionName">Select Region</div>
+            <div id="detConf" style="font-size:0.8rem; color:#64748B;">Confidence: -</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="score-value" id="detScore">-</div>
+            <div class="score-label">Score / 100</div>
+          </div>
+        </div>
+        
+        <div style="font-weight:700; font-size:0.8rem; margin-top:4px;">WHY LOW CONFIDENCE?</div>
+        <div class="factor-bars" id="factorBars">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="explanation-box" id="detExplanation">
+          Select a region to view the forecast health explanation.
+        </div>
+      </div>
+
+      <div class="detail-card" style="flex:1;">
+        <div class="panel-title" style="margin-bottom:12px;">HISTORICAL FAILURE FINGERPRINT</div>
+        <div class="fingerprint-list" id="fpList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="detail-card" style="margin-top: 16px;">
+        <div class="panel-title" style="margin-bottom:8px;">DATA PROVENANCE</div>
+        <div style="font-size:0.75rem; color:var(--navy-600); line-height: 1.6;">
+          <div style="display:flex; justify-content:space-between;"><span>Source:</span> <span id="provSource" style="font-weight:600;">-</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Forecast:</span> <span id="provForecast" style="font-weight:600;">-</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Reference:</span> <span id="provReference" style="font-weight:600;">-</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Init Time:</span> <span id="provInit" style="font-weight:600;">-</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Abs Error:</span> <span id="provAbs" style="font-weight:600; color:#EF4444;">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Charts -->
+  <div class="ep-bottom">
+    <div class="chart-card">
+      <div class="panel-title">Forecast Disagreement</div>
+      <div style="font-size:0.75rem; color:#64748B;">Model A vs B vs C vs Ensemble Mean</div>
+      <div class="chart-container"><canvas id="chartDivergence"></canvas></div>
+    </div>
+    
+    <div class="chart-card">
+      <div class="panel-title">Predictability Cliff</div>
+      <div style="font-size:0.75rem; color:#64748B;">Day 1-10 Reliability Curve</div>
+      <div class="cliff-alert" id="cliffAlert"></div>
+      <div class="chart-container"><canvas id="chartTimeline"></canvas></div>
+    </div>
+    
+    <div class="chart-card">
+      <div class="panel-title">Region Ranking</div>
+      <div style="font-size:0.75rem; color:#64748B;">Ranked by Error-Prone Score</div>
+      <div class="chart-container"><canvas id="chartRanking"></canvas></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span>ForecastBust<span class="brand-accent">AI</span></span>
+      </div>
+      <div class="footer-note">
+        ⚠ All scores are Prototype AI Estimates. Do not use for official operations.<br/>
+        Data sources: Open-Meteo Multi-Model (ECMWF, GFS, ICON) · ERA5 Reanalysis Reference · IMD Climatology Baseline
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/error_prone.js"></script>
+</body>
+</html>

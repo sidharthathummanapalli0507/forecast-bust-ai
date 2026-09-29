@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Forecast Bust Detection | IMD NWP Analytics Platform</title>
+  <meta name="description" content="AI/ML-based system for detecting forecast busts in medium-range NWP forecasts over India — confidence maps, bust probabilities, and error fingerprinting." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="18" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <path d="M8 20 Q14 10 20 20 Q26 30 32 20" stroke="#fff" stroke-width="2" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+          <path d="M20 8 L20 12M20 28 L20 32M8 20 L12 20M28 20 L32 20" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">Forecast <span class="brand-accent">Guardian</span></span>
+        <span class="brand-sub">NWP Analytics Platform</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link active">Hub</a>
+      <a href="fingerprint.html" class="nav-link">Fingerprinting</a>
+      <a href="rainfall.html" class="nav-link">Rainfall Forecast</a>
+      <a href="aws.html" class="nav-link">AWS Live Stations</a>
+      <a href="bust.html" class="nav-link" style="color:#FB923C;font-weight:600;">Bust Engine</a>
+    </div>
+    <div class="nav-status">
+      <div class="status-dot pulse"></div>
+      <span class="status-text">Live System</span>
+      <span class="status-time" id="liveTime"></span>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+
+      <h1 class="hero-title">
+        Detect <span class="gradient-text">Forecast Busts</span><br/>
+        Before They Happen
+      </h1>
+      <p class="hero-desc">
+        An AI-powered platform that identifies regions and lead times where NWP forecasts are likely to fail — using historical error fingerprinting, ensemble spread analysis, and pattern recognition across cyclones, monsoon depressions, heat waves, and western disturbances.
+      </p>
+      <div class="hero-actions">
+        <a href="fingerprint.html" class="btn btn-primary">
+          Open Fingerprint Dashboard
+        </a>
+        <a href="#modules" class="btn btn-ghost">Explore Modules</a>
+      </div>
+      <!-- Metric Bar -->
+      <div class="hero-metrics">
+        <div class="metric-item">
+          <span class="metric-val">87.3%</span>
+          <span class="metric-lbl">Detection Accuracy</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val">6</span>
+          <span class="metric-lbl">Event Types</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val">Day 1–10</span>
+          <span class="metric-lbl">Lead Times</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val">5</span>
+          <span class="metric-lbl">Active Modules</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="radar-visual">
+        <div class="radar-ring radar-ring-1"></div>
+        <div class="radar-ring radar-ring-2"></div>
+        <div class="radar-ring radar-ring-3"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-center"></div>
+        <div class="radar-blip blip-1"></div>
+        <div class="radar-blip blip-2"></div>
+        <div class="radar-blip blip-3"></div>
+        <div class="radar-blip blip-4"></div>
+        <div class="radar-label">NWP Error Radar</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modules Grid -->
+  <section class="modules-section" id="modules">
+    <div class="section-header">
+      <h2>Platform Modules</h2>
+      <p>Operational analytical modules for real-time forecast bust detection</p>
+    </div>
+    <div class="modules-grid">
+
+      <a href="fingerprint.html" class="module-card active-module" id="card-fingerprint">
+        <div class="module-icon-wrap">
+          <svg class="module-icon" viewBox="0 0 48 48" fill="none">
+            <path d="M24 6C14 6 6 14 6 24s8 18 18 18 18-8 18-18S34 6 24 6z" stroke="#4fc3f7" stroke-width="1.5" fill="none"/>
+            <path d="M24 12c-6.6 0-12 5.4-12 12" stroke="#4fc3f7" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M24 17c-3.9 0-7 3.1-7 7" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="24" cy="24" r="2.5" fill="#4fc3f7"/>
+            <path d="M18 30c1.5 2 3.7 3 6 3s4.5-1 6-3" stroke="#4fc3f7" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="module-badge">Module 1 · Active</div>
+        <h3>Forecast Failure<br/>Fingerprinting</h3>
+        <p>Analyzes historical forecast–observation error patterns to build failure fingerprints for each weather event type and region.</p>
+        <div class="module-features">
+          <span class="feature-tag">Historical RMSE</span>
+          <span class="feature-tag">Event Classification</span>
+          <span class="feature-tag">Lead Time Analysis</span>
+        </div>
+        <div class="module-arrow">Open Dashboard →</div>
+      </a>
+
+      <a href="rainfall.html" class="module-card active-module" id="card-rainfall">
+        <div class="module-icon-wrap">
+          <svg class="module-icon" viewBox="0 0 48 48" fill="none">
+            <path d="M24 6C18 6 12 11 12 18c0 8 12 24 12 24s12-16 12-24c0-7-6-12-12-12z" stroke="#FF6500" stroke-width="1.5" fill="rgba(255,101,0,0.08)" stroke-linejoin="round"/>
+            <circle cx="24" cy="18" r="4" fill="#FF6500"/>
+          </svg>
+        </div>
+        <div class="module-badge">Module 2 · Active</div>
+        <h3>IMD Rainfall<br/>Forecast Analytics</h3>
+        <p>State & District level granular rainfall outlook plus 36 Subdivision forecasts with IMD warning advisories and AI bust probabilities.</p>
+        <div class="module-features">
+          <span class="feature-tag">State & District API</span>
+          <span class="feature-tag">Subdivision API</span>
+          <span class="feature-tag">Color Warnings</span>
+        </div>
+        <div class="module-arrow">Open Dashboard →</div>
+      </a>
+
+      <a href="aws.html" class="module-card active-module" id="card-aws">
+        <div class="module-icon-wrap">
+          <svg class="module-icon" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="18" stroke="#FF6500" stroke-width="1.8"/>
+            <path d="M24 10v6m0 16v6M10 24h6m16 0h6" stroke="#FF6500" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="24" r="5" fill="#FF6500"/>
+          </svg>
+        </div>
+        <div class="module-badge">Module 3 · Active</div>
+        <h3>AWS Live Telemetry<br/>& Bust Verification</h3>
+        <p>Real-time IMD Automatic Weather Station observations cross-referenced against Day-1 NWP predictions to detect instant convective cloudburst busts.</p>
+        <div class="module-features">
+          <span class="feature-tag">GET aws_data</span>
+          <span class="feature-tag">24h Meteograms</span>
+          <span class="feature-tag">Instant Verification</span>
+        </div>
+        <div class="module-arrow">Open Dashboard →</div>
+      </a>
+
+      <a href="bust.html" class="module-card active-module" id="card-bust-engine">
+        <div class="module-icon-wrap">
+          <svg class="module-icon" viewBox="0 0 48 48" fill="none">
+            <rect x="8" y="8" width="32" height="32" rx="6" stroke="#FF6500" stroke-width="1.8"/>
+            <path d="M16 32V24M24 32V16M32 32V20" stroke="#FF6500" stroke-width="2" stroke-linecap="round"/>
+            <path d="M16 20L24 12L32 16" stroke="#FF6500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="module-badge">Module 4 · Active</div>
+        <h3>Forecast Bust<br/>Probability Engine</h3>
+        <p>Region-wise and lead-time-wise bust probability engine for India. AI/ML risk estimation based on ensemble spread and historical error.</p>
+        <div class="module-features">
+          <span class="feature-tag">Region Bust Map</span>
+          <span class="feature-tag">Day 1-10 Timeline</span>
+          <span class="feature-tag">Risk Factors</span>
+        </div>
+        <div class="module-arrow">Open Dashboard →</div>
+      </a>
+
+      <a href="error_prone.html" class="module-card active-module" id="card-error-prone">
+        <div class="module-icon-wrap">
+          <svg class="module-icon" viewBox="0 0 48 48" fill="none">
+            <path d="M12 36L20 24L28 28L36 12" stroke="#FF6500" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="36" r="3" fill="#FF6500"/>
+            <circle cx="20" cy="24" r="3" fill="#FF6500"/>
+            <circle cx="28" cy="28" r="3" fill="#FF6500"/>
+            <circle cx="36" cy="12" r="3" fill="#FF6500"/>
+          </svg>
+        </div>
+        <div class="module-badge">Module 5 · Active</div>
+        <h3>Error-Prone Area<br/>Intelligence</h3>
+        <p>Identify regions where the current medium-range NWP forecast may be unreliable and explain the meteorological/data-driven reasons for low forecast confidence.</p>
+        <div class="module-features">
+          <span class="feature-tag">Reliability Map</span>
+          <span class="feature-tag">Historical Fingerprints</span>
+          <span class="feature-tag">Predictability Cliff</span>
+        </div>
+        <div class="module-arrow">Open Dashboard →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span>Forecast <span class="brand-accent">Guardian</span></span>
+        <span class="footer-sub">AI/ML NWP Analytics · IMD Problem Statement</span>
+      </div>
+      <div class="footer-note">
+        Built for operational meteorological decision-making.<br/>
+        Data sources: Open-Meteo · ECMWF · IMD · NASA POWER · NOAA
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Live clock — Indian Standard Time (IST)
+    function updateTime() {
+      const now = new Date();
+      const opts = { timeZone: 'Asia/Kolkata', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+      document.getElementById('liveTime').textContent =
+        now.toLocaleString('en-IN', opts).replace(/,/g, '') + ' IST';
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // Card hover pulse
+    document.querySelectorAll('.module-card').forEach(card => {
+      card.addEventListener('mouseenter', () => card.classList.add('hovered'));
+      card.addEventListener('mouseleave', () => card.classList.remove('hovered'));
+    });
+  </script>
+</body>
+</html>

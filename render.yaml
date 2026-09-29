@@ -1,0 +1,30 @@
+services:
+  # FastAPI AI/ML Forecast Bust Detection Backend Service
+  - type: web
+    name: forecast-bust-engine
+    runtime: python
+    rootDir: Weather/bust-engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 8001
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Open-Meteo is completely free & keyless - no API key secret needed!
+
+  # Express.js UI & Web Dashboard Server
+  - type: web
+    name: forecast-bust-web
+    runtime: node
+    rootDir: Weather
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: BUST_ENGINE_URL
+        fromService:
+          type: web
+          name: forecast-bust-engine
+          property: host

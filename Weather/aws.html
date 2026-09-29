@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IMD AWS Live Telemetry & Real-Time Bust Detection | ForecastBustAI</title>
+  <meta name="description" content="Automatic Weather Station (AWS) real-time surface telemetry and instant forecast bust detection across India. Integrates IMD api/v1/aws_data."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/aws.css"/>
+
+  <!-- Chart.js & Leaflet JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="18" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <path d="M8 20 Q14 10 20 20 Q26 30 32 20" stroke="#fff" stroke-width="2" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+          <path d="M20 8L20 12M20 28L20 32M8 20L12 20M28 20L32 20" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="brand-sub">IMD Surface Telemetry Network</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Hub</a>
+      <a href="fingerprint.html" class="nav-link">Fingerprinting</a>
+      <a href="rainfall.html" class="nav-link">Rainfall Forecast</a>
+      <a href="aws.html" class="nav-link active">AWS Live Stations</a>
+      <a href="bust.html" class="nav-link" style="color:#FB923C;font-weight:600;">Bust Engine</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-time" id="liveTime"></span>
+    </div>
+  </nav>
+
+  <!-- Main Layout -->
+  <main class="aws-layout">
+
+    <!-- ===== COMMAND BAR ===== -->
+    <section class="aws-command-bar">
+      <div class="aws-cb-left">
+        <h1 class="aws-page-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="margin-right:0.5rem; flex-shrink:0;">
+            <circle cx="12" cy="12" r="9" stroke="#FF6500" stroke-width="2"/>
+            <path d="M12 3v3m0 12v3M3 12h3m12 0h3" stroke="#FF6500" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="3" fill="#FF6500"/>
+          </svg>
+          Automatic Weather Station (AWS) Live Telemetry
+        </h1>
+        <p class="aws-page-subtitle">
+          IMD Ground Truth API · <code class="aws-api-badge">GET /api/v1/aws_data</code> · Surface Telemetry vs NWP Forecast Instant Bust Verification
+        </p>
+
+        <!-- Navigation Switcher directly linking beside State & District Rainfall -->
+        <div class="aws-mode-switcher">
+          <a href="rainfall.html" class="aws-mode-btn">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 0 0-5 5c0 3.5 5 9 5 9s5-5.5 5-9a5 5 0 0 0-5-5zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="currentColor"/></svg>
+            State & District Forecast
+            <span class="aws-mode-badge">Forecast</span>
+          </a>
+          <a href="rainfall.html" class="aws-mode-btn">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 13.5h12M4 11V6M8 11V3M12 11V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Observed Rainfall & Departure
+            <span class="aws-mode-badge">districtrainfall</span>
+          </a>
+          <a href="aws.html" class="aws-mode-btn active">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+            AWS Live Telemetry
+            <span class="aws-mode-badge">aws_data</span>
+          </a>
+          <a href="rainfall.html" class="aws-mode-btn">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h12M8 2v12" stroke="currentColor" stroke-width="1.2"/></svg>
+            Subdivision (36)
+          </a>
+        </div>
+      </div>
+
+      <div class="aws-cb-controls">
+        <input type="text" id="searchQuery" class="aws-search-input" placeholder="Search Station, District, ID…" oninput="applyFilters()"/>
+        
+        <select class="fp-select" id="stateFilter" onchange="applyFilters()">
+          <option value="all">All States</option>
+          <option value="Maharashtra">Maharashtra</option>
+          <option value="Kerala">Kerala</option>
+          <option value="Delhi (UT)">Delhi (UT)</option>
+          <option value="Tamil Nadu">Tamil Nadu</option>
+          <option value="Gujarat">Gujarat</option>
+          <option value="Odisha">Odisha</option>
+          <option value="West Bengal">West Bengal</option>
+          <option value="Himachal Pradesh">Himachal Pradesh</option>
+          <option value="Uttarakhand">Uttarakhand</option>
+          <option value="Karnataka">Karnataka</option>
+          <option value="Rajasthan">Rajasthan</option>
+          <option value="Assam">Assam</option>
+        </select>
+
+        <select class="fp-select" id="bustFilter" onchange="applyFilters()">
+          <option value="all">All Verification Statuses</option>
+          <option value="CRITICAL">Critical Rain / Cloudburst Bust</option>
+          <option value="HIGH">Significant Divergence / False Alarm</option>
+          <option value="ALIGNED">Model Aligned (±15%)</option>
+        </select>
+
+        <button class="aws-refresh-btn" onclick="triggerManualRefresh()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+          </svg>
+          <span id="refreshBtnText">Auto Refresh (30s)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== KPI METRIC SUMMARY ===== -->
+    <section class="aws-kpi-grid">
+      <div class="aws-kpi-card">
+        <div class="aws-kpi-icon orange">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="aws-kpi-content">
+          <span class="aws-kpi-label">Active Surface Nodes</span>
+          <span class="aws-kpi-value" id="kpiOnline">--</span>
+          <span class="aws-kpi-sub">Real-Time IMD AWS Telemetry</span>
+        </div>
+      </div>
+
+      <div class="aws-kpi-card">
+        <div class="aws-kpi-icon red">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="aws-kpi-content">
+          <span class="aws-kpi-label">NWP Model Busts</span>
+          <span class="aws-kpi-value" id="kpiBusts" style="color:var(--bust-critical);">--</span>
+          <span class="aws-kpi-sub">Observed vs Forecast &gt; ±40mm</span>
+        </div>
+      </div>
+
+      <div class="aws-kpi-card">
+        <div class="aws-kpi-icon blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+        </div>
+        <div class="aws-kpi-content">
+          <span class="aws-kpi-label">Peak Rain Intensity</span>
+          <span class="aws-kpi-value" id="kpiMaxRain" style="color:#0284C7;">--</span>
+          <span class="aws-kpi-sub">Cloudburst Warning Threshold</span>
+        </div>
+      </div>
+
+      <div class="aws-kpi-card">
+        <div class="aws-kpi-icon green">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="aws-kpi-content">
+          <span class="aws-kpi-label">Forecast Alignment</span>
+          <span class="aws-kpi-value" id="kpiAligned" style="color:var(--bust-aligned);">--</span>
+          <span class="aws-kpi-sub">Within Operational Tolerance</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MAIN SPLIT VIEW (MAP + STATION INSPECTOR) ===== -->
+    <div class="aws-main-split">
+
+      <!-- Left: Interactive Leaflet Map of AWS Network -->
+      <section class="aws-map-card">
+        <div class="aws-card-header">
+          <h2 class="aws-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6500" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Nationwide AWS Surface Observational Grid — Satellite View
+          </h2>
+          <div style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.2rem 0.65rem;background:rgba(255,101,0,0.08);border:1.5px solid var(--border-mid);border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;color:var(--orange)">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2F9E44;box-shadow:0 0 8px #2F9E44"></span>
+            🛰️ Original India Satellite HD
+          </div>
+        </div>
+        <div id="awsMap" class="aws-map-canvas"></div>
+        <div class="aws-map-legend">
+          <div class="aws-legend-item">
+            <span class="aws-legend-dot critical"></span>
+            <span>Critical Rain / Cloudburst Bust (&gt;+50mm error)</span>
+          </div>
+          <div class="aws-legend-item">
+            <span class="aws-legend-dot high"></span>
+            <span>False Alarm / High Divergence</span>
+          </div>
+          <div class="aws-legend-item">
+            <span class="aws-legend-dot aligned"></span>
+            <span>Forecast Accurately Aligned</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Station Telemetry Inspector Drawer -->
+      <section class="aws-inspector-card">
+        <div class="aws-card-header">
+          <h2 class="aws-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6500" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            Station Telemetry & Bust Verification
+          </h2>
+          <span id="inspStatusPill" class="aws-status-pill aligned">ALIGNED</span>
+        </div>
+
+        <div class="aws-inspector-body">
+          <div class="aws-station-header">
+            <div>
+              <h3 class="aws-station-name" id="inspStationName">Select an AWS Station</h3>
+              <div class="aws-station-loc" id="inspStationLoc">Click on any marker on the map or row in the table</div>
+            </div>
+          </div>
+
+          <!-- Real-Time AI Bust Verification Diagnosis -->
+          <div class="aws-bust-box aligned" id="inspBustBox">
+            <div class="aws-bust-header">
+              <span class="aws-bust-title" id="inspBustTitle">FORECAST VERIFICATION</span>
+              <span class="aws-bust-delta zero" id="inspBustDelta">Δ 0.0 mm</span>
+            </div>
+            <div class="aws-bust-desc" id="inspBustDesc">
+              Awaiting telemetry selection...
+            </div>
+          </div>
+
+          <!-- Live Sensors Matrix -->
+          <div class="aws-sensors-grid">
+            <div class="aws-sensor-box">
+              <span class="aws-sensor-title">24h Rain Accumulation</span>
+              <span class="aws-sensor-val" id="sensorRain24h" style="color:#0284C7;">--</span>
+              <span class="aws-sensor-sub">Ground tipping bucket sensor</span>
+            </div>
+
+            <div class="aws-sensor-box">
+              <span class="aws-sensor-title">1h Rain Intensity</span>
+              <span class="aws-sensor-val" id="sensorRain1h" style="color:#0284C7;">--</span>
+              <span class="aws-sensor-sub">Flash flood initiation tracker</span>
+            </div>
+
+            <div class="aws-sensor-box">
+              <span class="aws-sensor-title">Air Temperature</span>
+              <span class="aws-sensor-val" id="sensorTemp" style="color:#EA580C;">--</span>
+              <span class="aws-sensor-sub">Humidity: <b id="sensorHumid">--</b></span>
+            </div>
+
+            <div class="aws-sensor-box">
+              <span class="aws-sensor-title">Surface Pressure</span>
+              <span class="aws-sensor-val" id="sensorPressure">--</span>
+              <span class="aws-sensor-sub">Barometric transducer</span>
+            </div>
+
+            <div class="aws-sensor-box" style="grid-column: span 2;">
+              <span class="aws-sensor-title">
+                Wind Speed & Vector
+                <svg id="windNeedle" width="16" height="16" viewBox="0 0 24 24" fill="none" style="transition:transform 0.4s ease;">
+                  <polygon points="12 2 19 21 12 17 5 21" fill="#FF6500"/>
+                </svg>
+              </span>
+              <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <span class="aws-sensor-val" id="sensorWind">--</span>
+                <span style="font-family:var(--font-mono); font-weight:700; color:var(--text-secondary);" id="sensorWindDir">--</span>
+              </div>
+              <span class="aws-sensor-sub">Battery telemetry: <span id="sensorBattery" style="font-weight:700;">--</span></span>
+            </div>
+          </div>
+
+          <!-- 24-Hour Meteogram Chart -->
+          <div class="aws-chart-box">
+            <div class="aws-chart-header">
+              <span>24-Hour Meteogram (Rainfall vs. Temperature)</span>
+              <span style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted);">Hourly Time-Series</span>
+            </div>
+            <div class="aws-canvas-wrap">
+              <canvas id="meteogramCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ===== FULL AWS TELEMETRY DATA TABLE ===== -->
+    <section class="aws-table-card">
+      <div class="aws-table-header-wrap">
+        <div>
+          <h2 class="aws-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6500" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            Real-Time AWS Telemetry & NWP Model Cross-Verification
+          </h2>
+          <span style="font-size:0.78rem; color:var(--text-secondary);">Direct stream from IMD Automatic Weather Station network</span>
+        </div>
+      </div>
+
+      <div class="aws-table-responsive">
+        <table class="aws-table">
+          <thead>
+            <tr>
+              <th>Station ID</th>
+              <th>Station & District</th>
+              <th>Temp</th>
+              <th>Humidity</th>
+              <th>Wind Vector</th>
+              <th>1h Rain</th>
+              <th>24h Rain</th>
+              <th>NWP Day-1</th>
+              <th>Bust Diagnosis</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="awsTableBody">
+            <!-- Populated dynamically by aws.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/aws-data.js"></script>
+  <script src="js/aws.js"></script>
+</body>
+</html>

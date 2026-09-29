@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Subdivision Rainfall Forecast (7 Days) | ForecastBustAI · IMD</title>
+  <meta name="description" content="IMD Subdivision Rainfall Forecast — live 7-day rainfall outlook across all 36 meteorological subdivisions of India with bust risk analysis."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/rainfall.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    if (typeof L === 'undefined') {
+      document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>');
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"><\\/script>');
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="18" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <path d="M8 20 Q14 10 20 20 Q26 30 32 20" stroke="#fff" stroke-width="2" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+          <path d="M20 8L20 12M20 28L20 32M8 20L12 20M28 20L32 20" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="brand-sub">IMD Rainfall Module</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Hub</a>
+      <a href="fingerprint.html" class="nav-link">Fingerprinting</a>
+      <a href="rainfall.html" class="nav-link active">Rainfall Forecast</a>
+      <a href="aws.html" class="nav-link">AWS Live Stations</a>
+      <a href="bust.html" class="nav-link" style="color:#FB923C;font-weight:600;">Bust Engine</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-time" id="liveTime"></span>
+    </div>
+  </nav>
+
+  <!-- Main Layout -->
+  <main class="rf-layout">
+
+    <!-- ===== COMMAND BAR ===== -->
+    <div class="command-bar">
+      <div class="cb-left">
+        <h1 class="page-title" id="pageTitle">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="margin-right:0.45rem;flex-shrink:0">
+            <path d="M11 2C7 2 4 6 6 10L11 20L16 10C18 6 15 2 11 2z" stroke="#FF6500" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+            <circle cx="11" cy="9" r="2" fill="#FF6500"/>
+          </svg>
+          <span id="titleText">State & District Rainfall Forecast</span>
+        </h1>
+        <p class="page-subtitle" id="pageSubtitle">
+          IMD API · <code class="api-endpoint" id="apiEndpointCode">GET /api/v1/state_district_rainfall_forecast</code> · Granular District Predictions & Bust Probabilities · Updated Daily
+        </p>
+        <!-- Mode Switcher: 4 Integrated IMD APIs -->
+        <div class="mode-switcher">
+          <button class="mode-btn active" id="btnModeDistrict" onclick="switchForecastMode('district')">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 0 0-5 5c0 3.5 5 9 5 9s5-5.5 5-9a5 5 0 0 0-5-5zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="currentColor"/></svg>
+            State & District Forecast
+            <span class="mode-badge">Forecast</span>
+          </button>
+          <a href="aws.html" class="mode-btn" style="text-decoration:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+            AWS Live Telemetry Dashboard
+            <span class="mode-badge" style="background:#FF6500; color:#fff;">aws_data</span>
+          </a>
+          <button class="mode-btn" id="btnModeObserved" onclick="switchForecastMode('observed')">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 13.5h12M4 11V6M8 11V3M12 11V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Observed Rainfall & Departure
+            <span class="mode-badge">districtrainfall</span>
+          </button>
+          <button class="mode-btn" id="btnModeSubdiv" onclick="switchForecastMode('subdivision')">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h12M8 2v12" stroke="currentColor" stroke-width="1.2"/></svg>
+            Subdivision (36)
+          </button>
+        </div>
+      </div>
+      <div class="cb-controls">
+        <div class="api-key-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M5.5 8.5L2 12M8 1C9.66 1 11 2.34 11 4s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z" stroke="#9C8060" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <input type="password" id="imdApiKey" placeholder="Paste IMD API Key…" class="api-key-input"/>
+        </div>
+        <!-- State filter (District & Observed modes) -->
+        <select class="fp-select" id="stateFilter" onchange="onStateFilterChange(this.value)">
+          <option value="all">All States</option>
+          <option value="Maharashtra">Maharashtra</option>
+          <option value="Kerala">Kerala</option>
+          <option value="Tamil Nadu">Tamil Nadu</option>
+          <option value="Gujarat">Gujarat</option>
+          <option value="Odisha">Odisha</option>
+          <option value="West Bengal">West Bengal</option>
+          <option value="Himachal Pradesh">Himachal Pradesh</option>
+          <option value="Karnataka">Karnataka</option>
+          <option value="Assam">Assam</option>
+          <option value="Rajasthan">Rajasthan</option>
+          <option value="Uttarakhand">Uttarakhand</option>
+          <option value="Delhi (UT)">Delhi (UT)</option>
+        </select>
+        <!-- Warning Level Filter (District mode) -->
+        <select class="fp-select" id="warningFilter" onchange="onWarningFilterChange(this.value)">
+          <option value="all">All Warnings</option>
+          <option value="Red">Red Warning (Take Action)</option>
+          <option value="Orange">Orange Alert (Be Prepared)</option>
+          <option value="Yellow">Yellow Watch (Be Updated)</option>
+          <option value="Green">Green (No Warning)</option>
+        </select>
+        <!-- Departure Category Filter (Observed mode) -->
+        <select class="fp-select" id="depFilter" style="display:none" onchange="onDepFilterChange(this.value)">
+          <option value="all">All Departure Classes</option>
+          <option value="LE">Large Excess (LE ≥ +60%)</option>
+          <option value="E">Excess (E +20% to +59%)</option>
+          <option value="N">Normal (N -19% to +19%)</option>
+          <option value="D">Deficient (D -59% to -20%)</option>
+          <option value="LD">Large Deficient (LD ≤ -60%)</option>
+          <option value="NR">No Rain (NR -100%)</option>
+        </select>
+        <!-- Subdivision filter (Subdivision mode, hidden in district/observed mode) -->
+        <select class="fp-select" id="subdivisionFilter" style="display:none" onchange="filterSubdivisionsByZone(this.value)">
+          <option value="all">All Subdivisions</option>
+          <option value="northeast">Northeast India</option>
+          <option value="northwest">Northwest India</option>
+          <option value="central">Central India</option>
+          <option value="peninsula">Peninsular India</option>
+          <option value="coastal">Coastal Regions</option>
+          <option value="himalayan">Himalayan States</option>
+        </select>
+        <button class="btn-refresh" id="fetchBtn" onclick="fetchRainfallData()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" id="fetchIcon"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 2v5h-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Fetch Live Data
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ===== API STATUS BANNER ===== -->
+    <div class="api-status-bar" id="apiBar">
+      <div class="api-bar-left">
+        <div class="api-pill" id="apiPill">
+          <span class="api-pill-dot"></span>
+          <span id="apiPillText">No API Key — Demo Mode</span>
+        </div>
+        <span class="api-bar-endpoint" id="apiEndpointUrl">https://api.imd.gov.in/api/v1/state_district_rainfall_forecast</span>
+      </div>
+      <div class="api-bar-right">
+        <span class="api-bar-meta" id="lastUpdated">—</span>
+        <span class="api-bar-meta" id="recordsCount">70+ Districts</span>
+      </div>
+    </div>
+
+    <!-- ===== KPI CARDS ===== -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(25,113,194,0.08);border-color:rgba(25,113,194,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3C8 3 5 6 7 9L11 18L15 9C17 6 14 3 11 3z" stroke="#1971C2" stroke-width="1.5" fill="rgba(25,113,194,0.1)" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiHeavy" style="color:#1971C2">—</span>
+          <span class="kpi-lbl" id="kpiHeavyLbl">Heavy Rain Districts</span>
+        </div>
+        <div class="kpi-trend down" id="kpiHeavyTrend">Day 1–3 forecast</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(224,49,49,0.08);border-color:rgba(224,49,49,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3L20 19H2L11 3z" stroke="#E03131" stroke-width="1.5" fill="rgba(224,49,49,0.08)" stroke-linejoin="round"/><path d="M11 9v4M11 15v1" stroke="#E03131" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiExcessive" style="color:#E03131">—</span>
+          <span class="kpi-lbl" id="kpiExcessiveLbl">Red Action Warnings</span>
+        </div>
+        <div class="kpi-trend down" id="kpiExcessiveTrend">Highest severity</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(255,101,0,0.08);border-color:rgba(255,101,0,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L13.5 9H20L14.5 13.5L16.5 20L11 15.5L5.5 20L7.5 13.5L2 9H8.5L11 2z" stroke="#FF6500" stroke-width="1.5" fill="rgba(255,101,0,0.1)" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiBustRisk" style="color:#FF6500">—</span>
+          <span class="kpi-lbl" id="kpiBustLbl">High Bust Risk (>70%)</span>
+        </div>
+        <div class="kpi-trend down" id="kpiBustTrend">Model uncertainty</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(47,158,68,0.08);border-color:rgba(47,158,68,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 14h16M7 10h8M10 6h2" stroke="#2F9E44" stroke-width="1.5" stroke-linecap="round"/><path d="M11 18v2" stroke="#1971C2" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiNormal" style="color:#2F9E44">—</span>
+          <span class="kpi-lbl" id="kpiNormalLbl">Normal / Dry Zones</span>
+        </div>
+        <div class="kpi-trend up" id="kpiNormalTrend">Stable forecast</div>
+      </div>
+    </div>
+
+    <!-- ===== SATELLITE MAP PREVIEW: SUBDIVISION & DISTRICT RAINFALL ===== -->
+    <div class="panel rf-map-panel" style="margin-bottom:1.25rem">
+      <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem">
+        <div style="display:flex;align-items:center;gap:0.6rem">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6500" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <h2 style="font-size:1.1rem;font-weight:800;color:var(--text-primary)">India Meteorological Satellite Rainfall & Subdivision Map</h2>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.85rem;flex-wrap:wrap">
+          <div class="rf-map-legend" style="display:flex;align-items:center;gap:0.65rem;font-size:0.72rem;color:var(--text-muted)">
+            <span style="display:inline-flex;align-items:center;gap:0.3rem"><span style="width:9px;height:9px;border-radius:50%;background:#E03131;display:inline-block"></span>Red Action</span>
+            <span style="display:inline-flex;align-items:center;gap:0.3rem"><span style="width:9px;height:9px;border-radius:50%;background:#EA580C;display:inline-block"></span>Orange Alert</span>
+            <span style="display:inline-flex;align-items:center;gap:0.3rem"><span style="width:9px;height:9px;border-radius:50%;background:#D97706;display:inline-block"></span>Yellow Watch</span>
+            <span style="display:inline-flex;align-items:center;gap:0.3rem"><span style="width:9px;height:9px;border-radius:50%;background:#2F9E44;display:inline-block"></span>Green Normal</span>
+          </div>
+          <div style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.22rem 0.65rem;background:rgba(255,101,0,0.08);border:1.5px solid var(--border-mid);border-radius:var(--radius-full);font-size:0.73rem;font-weight:700;color:var(--orange)">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2F9E44;box-shadow:0 0 8px #2F9E44"></span>
+            🛰️ Original India Satellite HD
+          </div>
+        </div>
+      </div>
+      <div id="rfMap" style="height:380px;border-radius:var(--radius-sm);overflow:hidden;border:1.5px solid var(--border-light);position:relative"></div>
+    </div>
+
+    <!-- ===== MAIN CONTENT GRID ===== -->
+    <div class="rf-main-grid">
+
+      <!-- LEFT: 7-Day Forecast Table -->
+      <div class="panel rf-table-panel">
+        <div class="panel-header">
+          <h2 id="tablePanelTitle">State & District 7-Day Rainfall Forecast</h2>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <input type="text" class="rf-search" id="subdivSearch" placeholder="🔍 Search district or state…" oninput="onSearchInput(this.value)"/>
+            <span class="panel-tag" id="subdivCount">Loading…</span>
+          </div>
+        </div>
+        <!-- Day Header Table -->
+        <div class="forecast-table-wrap">
+          <table class="forecast-table" id="forecastTable">
+            <thead id="forecastTableHead">
+              <tr>
+                <th class="col-subdiv">District & State</th>
+                <th class="col-region">IMD Warning</th>
+                <th>Day 1</th>
+                <th>Day 2</th>
+                <th>Day 3</th>
+                <th>Day 4</th>
+                <th>Day 5</th>
+                <th>Day 6</th>
+                <th>Day 7</th>
+                <th>7D QPF</th>
+                <th class="col-bust">Bust Risk</th>
+              </tr>
+            </thead>
+            <tbody id="forecastTableBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <!-- RIGHT: Charts Panel -->
+      <div class="rf-right-col">
+
+        <!-- Rainfall Category Distribution -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Rainfall Category Distribution</h2>
+            <span class="panel-tag">Day 1</span>
+          </div>
+          <div class="chart-wrap short">
+            <canvas id="categoryChart"></canvas>
+          </div>
+          <div class="category-legend" id="categoryLegend"></div>
+        </div>
+
+        <!-- Selected Subdivision 7-Day Bar -->
+        <div class="panel" id="selectedPanel">
+          <div class="panel-header">
+            <h2 id="selectedTitle">Select a Subdivision</h2>
+            <span class="panel-tag">7-Day Trend</span>
+          </div>
+          <div class="chart-wrap short">
+            <canvas id="subdivChart"></canvas>
+          </div>
+          <div class="selected-meta" id="selectedMeta">
+            <p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:1rem">Click any row to see 7-day rainfall trend</p>
+          </div>
+        </div>
+
+        <!-- API Response Raw (collapsible) -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>API Response Preview</h2>
+            <button class="btn-refresh sm" onclick="toggleRaw()">Toggle Raw JSON</button>
+          </div>
+          <div id="rawJsonWrap" style="display:none">
+            <pre class="raw-json" id="rawJson">// Fetch data to see raw API response</pre>
+          </div>
+          <div id="apiInfoBox" class="api-info-box">
+            <div class="api-info-row">
+              <span class="api-info-label">Active API</span>
+              <code class="api-info-val" id="apiInfoEndpoint">https://api.imd.gov.in/api/v1/state_district_rainfall_forecast</code>
+            </div>
+            <div class="api-info-row">
+              <span class="api-info-label">Active API</span>
+              <code class="api-info-val" id="apiInfoEndpoint">https://api.imd.gov.in/api/v1/state_district_rainfall_forecast</code>
+            </div>
+            <div class="api-info-row">
+              <span class="api-info-label">Parameters</span>
+              <code class="api-info-val">?state=&lt;state&gt;&amp;district=&lt;district&gt;&amp;date=&lt;YYYY-MM-DD&gt;</code>
+            </div>
+            <div class="api-info-row">
+              <span class="api-info-label">Auth</span>
+              <code class="api-info-val">Authorization: Bearer &lt;IMD_API_KEY&gt;</code>
+            </div>
+            <div class="api-info-row">
+              <span class="api-info-label">1. State District</span>
+              <code class="api-info-val">/api/v1/state_district_rainfall_forecast (Forecast &amp; Warnings)</code>
+            </div>
+            <div class="api-info-row">
+              <span class="api-info-label">2. District Observed</span>
+              <code class="api-info-val">/api/v1/districtrainfall (Ground Truth &amp; Departure)</code>
+            </div>
+            <div class="api-info-row">
+              <span class="api-info-label">3. Subdivision</span>
+              <code class="api-info-val">/api/v1/subdivision_rainfall_forecast (36 Subdivisions)</code>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== BUST RISK ANALYSIS SECTION ===== -->
+    <div class="panel bust-panel">
+      <div class="panel-header">
+        <h2>Rainfall Forecast Bust Risk Analysis</h2>
+        <span class="panel-tag">AI-Derived · Historical Error Patterns</span>
+      </div>
+      <div class="bust-grid" id="bustGrid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- ===== ZONE SUMMARY ===== -->
+    <div class="zone-grid">
+      <div class="panel zone-panel" id="zoneNE">
+        <div class="zone-header"><span class="zone-icon">🌧️</span><h3>Northeast India</h3></div>
+        <div class="zone-body" id="zoneNEBody"></div>
+      </div>
+      <div class="panel zone-panel" id="zoneNW">
+        <div class="zone-header"><span class="zone-icon">🌤️</span><h3>Northwest India</h3></div>
+        <div class="zone-body" id="zoneNWBody"></div>
+      </div>
+      <div class="panel zone-panel" id="zoneCentral">
+        <div class="zone-header"><span class="zone-icon">⛈️</span><h3>Central India</h3></div>
+        <div class="zone-body" id="zoneCentralBody"></div>
+      </div>
+      <div class="panel zone-panel" id="zonePeninsula">
+        <div class="zone-header"><span class="zone-icon">🌦️</span><h3>Peninsular India</h3></div>
+        <div class="zone-body" id="zonePeninsulaBody"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span>ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="footer-sub">IMD Rainfall Forecast Module</span>
+      </div>
+      <div class="footer-note">
+        Data Source: India Meteorological Department (IMD) · api.imd.gov.in<br/>
+        Bust risk scores derived from historical NWP error fingerprinting (2018–2023)
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/rainfall-data.js"></script>
+  <script src="js/rainfall.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "forecast-bust-ai",
+  "version": "1.0.0",
+  "description": "AI-Based Forecast Bust Detection for Medium-Range Weather Forecasts over India",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "weather",
+    "imd",
+    "nwp",
+    "forecast-bust",
+    "machine-learning",
+    "meteorology",
+    "mappls",
+    "india"
+  ],
+  "author": "ForecastBustAI Team",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

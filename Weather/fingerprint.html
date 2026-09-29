@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forecast Failure Fingerprinting | ForecastBustAI</title>
+  <meta name="description" content="Historical forecast error fingerprinting dashboard — analyze NWP model busts across cyclones, monsoon depressions, heat waves, and western disturbances over India."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/fingerprint.css"/>
+  <!-- Leaflet CSS & JS for official interactive India map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+</head>
+<body>
+
+  <!-- Animated Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="18" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <path d="M8 20 Q14 10 20 20 Q26 30 32 20" stroke="#fff" stroke-width="2" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+          <path d="M20 8 L20 12M20 28 L20 32M8 20 L12 20M28 20 L32 20" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="brand-sub">Fingerprinting Module</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Hub</a>
+      <a href="fingerprint.html" class="nav-link active">Fingerprinting</a>
+      <a href="rainfall.html" class="nav-link">Rainfall Forecast</a>
+      <a href="aws.html" class="nav-link">AWS Live Stations</a>
+      <a href="bust.html" class="nav-link" style="color:#FB923C;font-weight:600;">Bust Engine</a>
+    </div>
+    <div class="nav-status">
+      <div class="status-dot pulse"></div>
+      <span class="status-text">Historical Analysis Mode</span>
+      <span class="status-time" id="liveTime"></span>
+    </div>
+  </nav>
+
+  <!-- Dashboard Layout -->
+  <main class="fp-layout">
+
+    <!-- ===== TOP COMMAND BAR ===== -->
+    <div class="command-bar">
+      <div class="cb-left">
+        <h1 class="page-title">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="margin-right:0.4rem">
+            <circle cx="11" cy="11" r="9" stroke="#FF6500" stroke-width="1.5"/>
+            <path d="M11 5C7.68 5 5 7.68 5 11" stroke="#FF6500" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M11 8C9.34 8 8 9.34 8 11" stroke="#E85A00" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="11" cy="11" r="1.5" fill="#FF6500"/>
+          </svg>
+          Forecast Failure Fingerprinting
+        </h1>
+        <p class="page-subtitle">Historical NWP error pattern analysis · Identify systematic model failures by event type and region</p>
+      </div>
+      <div class="cb-controls">
+        <select class="fp-select" id="yearSelect">
+          <option value="2024">2024</option>
+          <option value="2023" selected>2023</option>
+          <option value="2022">2022</option>
+          <option value="2021">2021</option>
+          <option value="2020">2020</option>
+        </select>
+        <select class="fp-select" id="eventSelect">
+          <option value="all">All Events</option>
+          <option value="cyclone">Cyclones</option>
+          <option value="monsoon_depression">Monsoon Depression</option>
+          <option value="heavy_rain">Heavy Rainfall</option>
+          <option value="western_disturbance">Western Disturbance</option>
+          <option value="heat_wave">Heat Wave</option>
+          <option value="break_monsoon">Break/Active Monsoon</option>
+        </select>
+        <button class="btn-refresh" id="refreshBtn" onclick="loadDemoData()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 2v5h-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Refresh Analysis
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== ALERT BANNER ===== -->
+    <div class="alert-banner" id="alertBanner">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 13H1.5L8 1.5z" stroke="#f59e0b" stroke-width="1.3" fill="none"/><path d="M8 7v3M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <span><strong>Cyclone Biparjoy (Jun 2023)</strong> — Forecast bust detected on Day 5: IMD model underestimated track error by 340 km. ECMWF performed 43% better on this event.</span>
+      <button class="alert-close" onclick="document.getElementById('alertBanner').style.display='none'">✕</button>
+    </div>
+
+    <!-- ===== KPI CARDS ===== -->
+    <div class="kpi-grid">
+      <div class="kpi-card" id="kpi-events">
+        <div class="kpi-icon" style="background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="#4fc3f7" stroke-width="1.5"/><path d="M11 7v4l2.5 2.5" stroke="#4fc3f7" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiEvents">—</span>
+          <span class="kpi-lbl">Historical Events Analyzed</span>
+        </div>
+        <div class="kpi-trend up">↑ 12 from last year</div>
+      </div>
+      <div class="kpi-card" id="kpi-busts">
+        <div class="kpi-icon" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3L20 19H2L11 3z" stroke="#ef4444" stroke-width="1.5" fill="none"/><path d="M11 9v4M11 15v1" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiBusts">—</span>
+          <span class="kpi-lbl">Forecast Busts Recorded</span>
+        </div>
+        <div class="kpi-trend down">↑ Bust rate: 23.4%</div>
+      </div>
+      <div class="kpi-card" id="kpi-rmse">
+        <div class="kpi-icon" style="background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 18L8 11l4 5 3-7 4 3" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiRmse">—</span>
+          <span class="kpi-lbl">Avg Day-5 RMSE (°C)</span>
+        </div>
+        <div class="kpi-trend neutral">Baseline: 2.1°C</div>
+      </div>
+      <div class="kpi-card" id="kpi-highRisk">
+        <div class="kpi-icon" style="background:rgba(129,140,248,0.1);border-color:rgba(129,140,248,0.2)">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L4 6v5c0 4.4 3 8.5 7 9.5 4-1 7-5.1 7-9.5V6L11 2z" stroke="#818cf8" stroke-width="1.5" fill="none"/><path d="M8 11l2 2 4-4" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-val" id="kpiHighRisk">—</span>
+          <span class="kpi-lbl">High-Risk Zones Identified</span>
+        </div>
+        <div class="kpi-trend up">Northeast India +3 zones</div>
+      </div>
+    </div>
+
+    <!-- ===== MAIN GRID ===== -->
+    <div class="main-grid">
+
+      <!-- LEFT: Event Fingerprint List -->
+      <div class="panel panel-left">
+        <div class="panel-header">
+          <h2>Event Fingerprints</h2>
+          <span class="panel-badge" id="eventCount">Loading…</span>
+        </div>
+        <div class="fp-search">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="#8fa8cc" stroke-width="1.2"/><path d="M9.5 9.5L12 12" stroke="#8fa8cc" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <input type="text" id="fpSearch" placeholder="Search events…" oninput="filterEvents(this.value)"/>
+        </div>
+        <div class="event-list" id="eventList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- CENTER: Map + Lead-Time Chart -->
+      <div class="panel-center">
+        <!-- Geospatial Error Distribution — Original India Satellite Map -->
+        <div class="panel map-panel" style="height:370px">
+          <div class="panel-header">
+            <h2>Geospatial Error Distribution — Satellite Map</h2>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+              <div class="map-legend">
+                <span class="legend-dot" style="background:#2F9E44"></span>Low
+                <span class="legend-dot" style="background:#FF6500"></span>Moderate
+                <span class="legend-dot" style="background:#E03131"></span>High Bust Risk
+              </div>
+              <div style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.22rem 0.65rem;background:rgba(255,101,0,0.08);border:1.5px solid var(--border-mid);border-radius:var(--radius-full);font-size:0.73rem;font-weight:700;color:var(--orange)">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2F9E44;box-shadow:0 0 8px #2F9E44"></span>
+                🛰️ Original India Satellite HD
+              </div>
+            </div>
+          </div>
+          <!-- Map container: Original India Satellite Map renders here -->
+          <div id="indiaMap" class="india-map" style="flex:1;min-height:280px;border-radius:var(--radius-sm);border:1.5px solid var(--border-light);overflow:hidden;position:relative">
+            <!-- populated by initMap() -->
+          </div>
+        </div>
+
+        <!-- Lead Time RMSE Chart -->
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <h2>RMSE vs Lead Time (Day 1–10)</h2>
+            <div class="chart-toggles">
+              <button class="ctoggle active" id="btn-rmse-temp" onclick="setRMSEMetric('temp', this)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                Temperature
+              </button>
+              <button class="ctoggle" id="btn-rmse-prec" onclick="setRMSEMetric('prec', this)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6M8 14v6M12 16v6"/></svg>
+                Precipitation
+              </button>
+              <button class="ctoggle" id="btn-rmse-wind" onclick="setRMSEMetric('wind', this)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
+                Wind Speed
+              </button>
+              <button class="ctoggle" id="btn-rmse-all" onclick="setRMSEMetric('all', this)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                All
+              </button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="rmseChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Detail Panel -->
+      <div class="panel panel-right" id="detailPanel">
+        <div class="panel-header">
+          <h2>Fingerprint Detail</h2>
+          <span class="detail-hint">Click an event →</span>
+        </div>
+        <div id="detailContent" class="detail-placeholder">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:0.3">
+            <circle cx="24" cy="24" r="20" stroke="#4fc3f7" stroke-width="1.5"/>
+            <path d="M24 10C15.16 10 8 17.16 8 26" stroke="#4fc3f7" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M24 17c-3.87 0-7 3.13-7 7" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="24" cy="24" r="3" fill="#4fc3f7" opacity="0.5"/>
+          </svg>
+          <p>Select an event from the list to view its forecast failure fingerprint</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BOTTOM ROW ===== -->
+    <div class="bottom-grid">
+
+      <!-- Historical Bust Frequency by Month -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Historical Bust Frequency by Month</h2>
+          <span class="panel-tag">2018–2023</span>
+        </div>
+        <div class="chart-wrap short">
+          <canvas id="bustMonthChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Error by Event Type (Radar) -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Error Profile by Event Type</h2>
+          <span class="panel-tag">Radar View</span>
+        </div>
+        <div class="chart-wrap short">
+          <canvas id="eventRadarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Pattern Similarity Heatmap -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Model × Event Error Heatmap</h2>
+          <span class="panel-tag">Relative RMSE</span>
+        </div>
+        <div class="heatmap-grid" id="heatmapGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== FINGERPRINT SIGNATURE SECTION ===== -->
+    <div class="signature-section">
+      <div class="panel sig-panel">
+        <div class="panel-header">
+          <h2>Failure Fingerprint Signature Comparison</h2>
+          <div class="sig-controls">
+            <select class="fp-select sm" id="sig1Select">
+              <option value="0">Cyclone Biparjoy (2023)</option>
+              <option value="1">Monsoon Dep. – Odisha (2023)</option>
+              <option value="2">Heat Wave – NW India (2023)</option>
+            </select>
+            <span style="color:var(--text-muted)">vs</span>
+            <select class="fp-select sm" id="sig2Select">
+              <option value="1">Monsoon Dep. – Odisha (2023)</option>
+              <option value="0">Cyclone Biparjoy (2023)</option>
+              <option value="2">Heat Wave – NW India (2023)</option>
+            </select>
+            <button class="btn-refresh sm" onclick="drawSignatures()">Compare</button>
+          </div>
+        </div>
+        <div class="sig-grid">
+          <div class="chart-wrap sig-chart">
+            <canvas id="sig1Chart"></canvas>
+          </div>
+          <div class="sig-match">
+            <div class="match-circle" id="matchCircle">
+              <span class="match-pct" id="matchPct">—</span>
+              <span class="match-lbl">Similarity</span>
+            </div>
+            <div class="match-interpretation" id="matchInterp">
+              Select events to compare failure patterns
+            </div>
+          </div>
+          <div class="chart-wrap sig-chart">
+            <canvas id="sig2Chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span>ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="footer-sub">Fingerprinting Module v1.0</span>
+      </div>
+      <div class="footer-note">
+        Data shown is simulated for demonstration · Real data will load via API keys<br/>
+        Sources: Open-Meteo · ECMWF ERA5 · IMD · NASA POWER · NOAA
+      </div>
+    </div>
+  </footer>
+
+  <!-- JS -->
+  <script src="js/data.js"></script>
+  <script src="js/fingerprint.js"></script>
+</body>
+</html>

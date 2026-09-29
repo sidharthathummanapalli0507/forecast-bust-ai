@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forecast Bust Probability Engine | ForecastBustAI · IMD NWP Analytics</title>
+  <meta name="description" content="AI-Based Forecast Bust Detection — Where and when is the current NWP forecast most likely to fail? Region-wise and lead-time-wise bust probability engine for India."/>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/bust.css"/>
+</head>
+<body class="bust-page">
+
+  <!-- ═══════════════════════════════════════════════════════ NAVBAR ═══ -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="18" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <path d="M8 20 Q14 10 20 20 Q26 30 32 20" stroke="#fff" stroke-width="2" fill="none"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+          <path d="M20 8 L20 12M20 28 L20 32M8 20 L12 20M28 20 L32 20" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="brand-sub">Bust Probability Engine</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html"       class="nav-link">Hub</a>
+      <a href="fingerprint.html" class="nav-link">Fingerprinting</a>
+      <a href="rainfall.html"    class="nav-link">Rainfall Forecast</a>
+      <a href="aws.html"         class="nav-link">AWS Live Stations</a>
+      <a href="bust.html"        class="nav-link active">Bust Engine</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-time" id="liveTime"></span>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════════════════════════ ENGINE SUB-HEADER ═══ -->
+  <div class="bust-subheader">
+    <div class="bust-title-block">
+      <h1>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="vertical-align:middle;margin-right:6px">
+          <circle cx="9" cy="9" r="7.5" stroke="#94A3B8" stroke-width="1.3"/>
+          <path d="M9 4C6.2 4 4 6.2 4 9" stroke="#FB923C" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M9 6.5C7.6 6.5 6.5 7.6 6.5 9" stroke="#FB923C" stroke-width="1.3" stroke-linecap="round"/>
+          <circle cx="9" cy="9" r="1.5" fill="#FB923C"/>
+        </svg>
+        FORECAST BUST PROBABILITY ENGINE
+      </h1>
+      <p>Where and when is the current NWP forecast most likely to fail? · Region-wise · Day 1–10 · AI/ML Risk Estimation</p>
+    </div>
+    <span class="bust-prototype-badge">PROTOTYPE AI ESTIMATE</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ DATA STATUS BAR ═══ -->
+  <div class="data-status-bar">
+    <span class="ds-label">Data Sources</span>
+    <div class="ds-chips" id="statusChips">
+      <span class="ds-chip unavailable"><span class="ds-dot"></span>Initializing…</span>
+    </div>
+    <span class="ds-last-updated" id="lastUpdated">Fetching…</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ FILTER BAR ═══ -->
+  <div class="bust-filter-bar">
+    <div class="filter-group">
+      <label class="filter-label" for="varFilter">Variable</label>
+      <select class="filter-select" id="varFilter">
+        <option value="rainfall">Rainfall</option>
+        <option value="temperature">Temperature</option>
+        <option value="wind">Wind Speed</option>
+        <option value="pressure">Pressure</option>
+        <option value="humidity">Humidity</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <label class="filter-label" for="eventFilter">Weather Event</label>
+      <select class="filter-select" id="eventFilter">
+        <option value="all">All Events</option>
+        <option value="monsoon">Monsoon</option>
+        <option value="heavy_rainfall">Heavy Rainfall</option>
+        <option value="cyclone">Cyclone</option>
+        <option value="heat_wave">Heat Wave</option>
+        <option value="western_disturbance">Western Disturbance</option>
+        <option value="active_monsoon">Active Monsoon</option>
+        <option value="break_monsoon">Break Monsoon</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <label class="filter-label" for="riskFilter">Risk Level</label>
+      <select class="filter-select" id="riskFilter">
+        <option value="all">All Levels</option>
+        <option value="LOW">Low</option>
+        <option value="MODERATE">Moderate</option>
+        <option value="HIGH">High</option>
+        <option value="CRITICAL">Critical</option>
+      </select>
+    </div>
+    <button class="filter-btn-refresh" id="refreshBtn">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+        <path d="M12 7A5 5 0 1 1 7 2a5 5 0 0 1 3.6 1.5L12 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M12 2v3h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ KPI CARDS ════ -->
+  <div class="bust-kpi-row">
+    <div class="kpi-card" id="kpiIndia">
+      <div class="kpi-label">India Risk Level</div>
+      <div class="kpi-value" style="font-size:1.4rem;">—</div>
+      <div class="kpi-sub">Loading…</div>
+    </div>
+    <div class="kpi-card" id="kpiHighReg">
+      <div class="kpi-label">Highest Risk Region</div>
+      <div class="kpi-value" style="font-size:0.9rem;font-weight:700;">—</div>
+      <div class="kpi-sub">Loading…</div>
+    </div>
+    <div class="kpi-card" id="kpiMaxProb">
+      <div class="kpi-label">Maximum Bust Probability</div>
+      <div class="kpi-value">—</div>
+      <div class="kpi-sub">Loading…</div>
+    </div>
+    <div class="kpi-card" id="kpiCritDay">
+      <div class="kpi-label">Critical Lead Time</div>
+      <div class="kpi-value">—</div>
+      <div class="kpi-sub">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════ MAP + EXPLANATION AREA ═══ -->
+  <div class="bust-main">
+
+    <!-- ── Left: Map Panel ─────────────────────────────────────────── -->
+    <div class="map-panel">
+      <div class="map-panel-header">
+        <div class="map-panel-title">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M7.5 1L1 5v9l6.5-3L14 14V5L7.5 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+          India Forecast Bust Probability Map
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="ds-chip" id="mapFreshness">Loading…</span>
+          <!-- Day Selector -->
+          <div class="day-selector">
+            <span class="day-label">Day</span>
+            <div id="dayPills"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaflet Map -->
+      <div style="position:relative;flex:1;display:flex;flex-direction:column;">
+        <div id="bust-map"></div>
+        <!-- Loading overlay -->
+        <div class="map-loading" id="mapLoading" style="display:none;">
+          <div class="map-spinner"></div>
+          <div class="map-loading-text">Loading map data…</div>
+        </div>
+        <!-- Error overlay -->
+        <div class="map-error" id="mapError" style="display:none;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="#DC2626" stroke-width="1.5"/>
+            <path d="M12 8v4m0 4h.01" stroke="#DC2626" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div class="map-loading-text" style="color:#DC2626;text-align:center;max-width:240px;">
+            Backend offline. Run <code>bust-engine/start.bat</code> to start the Python API.
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="map-legend">
+        <span class="legend-title">Bust Risk</span>
+        <div class="legend-scale">
+          <span class="legend-item"><span class="legend-swatch" style="background:#22C55E;"></span>Low &lt;25%</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#EAB308;"></span>Moderate 25–45%</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#EA580C;"></span>High 45–65%</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#DC2626;"></span>Critical &gt;65%</span>
+        </div>
+        <span class="data-source-note">⚙ Prototype AI Estimate · Not official IMD</span>
+      </div>
+    </div>
+
+    <!-- ── Right: Explanation Panel ────────────────────────────────── -->
+    <div class="right-panel">
+
+      <!-- Explanation Card -->
+      <div class="explanation-card">
+        <div class="exp-header">
+          <div class="exp-header-top">
+            <span class="exp-title">Why is this region at risk?</span>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="6.5" cy="6.5" r="5.5" stroke="#94A3B8" stroke-width="1.2"/>
+              <path d="M6.5 5.5v4M6.5 4h.01" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="exp-region-name" id="expRegionName">Click a region on the map</div>
+          <div class="exp-region-sub" id="expRegionSub">Select a region to view risk factors</div>
+        </div>
+        <div class="exp-prob-display">
+          <span class="exp-prob-value" id="expProbValue" style="color:#94A3B8;">—</span>
+          <span class="exp-prob-label">bust probability</span>
+        </div>
+        <div class="exp-body" id="expBody">
+          <div class="exp-placeholder">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+              <path d="M12 20L17 25L28 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <p>Click any state on the map to see the risk factor breakdown for that region.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confidence note -->
+      <div style="padding:8px 10px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;">
+        <div style="font-size:0.68rem;font-weight:700;color:#C2410C;margin-bottom:3px;">PROTOTYPE AI ESTIMATE</div>
+        <div style="font-size:0.68rem;color:#9A3412;line-height:1.5;">
+          Probabilities are computed by a rule-based logistic model using ensemble spread from Open-Meteo (ICON), IMD climatological RMSE baselines, and terrain features. Not an official IMD forecast.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ BOTTOM CHARTS ════ -->
+  <div class="bust-bottom">
+
+    <!-- Timeline Chart -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-card-title">Day 1–10 Bust Probability Timeline</div>
+          <div class="chart-card-sub" id="timelineSubtitle">All India Average · Select region on map for specific area</div>
+        </div>
+        <span style="font-size:0.68rem;color:#94A3B8;font-style:italic;">Prototype</span>
+      </div>
+      <div class="chart-canvas-wrap" id="timelineChartWrap">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Probability Distribution -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-card-title">Probability Distribution</div>
+          <div class="chart-card-sub">Regions by bust probability range</div>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="probDistChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Risk Ranking -->
+    <div class="chart-card" style="overflow:hidden;">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-card-title">High-Risk Region Ranking</div>
+          <div class="chart-card-sub" id="rankingSubtitle">Top 15 · Day 1</div>
+        </div>
+      </div>
+
+      <!-- Top 8 Horizontal Bar -->
+      <div style="height:130px;position:relative;margin-bottom:4px;">
+        <canvas id="errorTrendChart"></canvas>
+      </div>
+
+      <!-- Full Table -->
+      <div class="ranking-table-wrap">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Region</th>
+              <th>Probability</th>
+              <th>Risk</th>
+              <th>Driver</th>
+            </tr>
+          </thead>
+          <tbody id="rankingBody">
+            <tr><td colspan="5" class="loading-placeholder"><div class="mini-spinner"></div> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════ FOOTER ════ -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span>ForecastBust<span class="brand-accent">AI</span></span>
+        <span class="footer-sub">Bust Probability Engine · Prototype AI/ML NWP Analytics · IMD Problem Statement</span>
+      </div>
+      <div class="footer-note">
+        ⚠ All bust probabilities are <strong>Prototype AI Estimates</strong> and do NOT represent official IMD probabilities.<br/>
+        Data sources: Open-Meteo ICON Ensemble · IMD Climatological RMSE Baselines · NCMRWF (where available)
+      </div>
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════════════════ SCRIPTS ════ -->
+  <script>
+    // Live clock — Indian Standard Time (IST)
+    function updateTime() {
+      const el = document.getElementById('liveTime');
+      if (!el) return;
+      const now = new Date();
+      const opts = { timeZone: 'Asia/Kolkata', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+      el.textContent = now.toLocaleString('en-IN', opts).replace(/,/g, '') + ' IST';
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // Navbar scroll
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+    });
+  </script>
+  <script src="js/bust.js"></script>
+</body>
+</html>
