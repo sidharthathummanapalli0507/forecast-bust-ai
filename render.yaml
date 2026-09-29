@@ -3,6 +3,7 @@ services:
   - type: web
     name: forecast-bust-engine
     runtime: python
+    plan: free
     rootDir: Weather/bust-engine
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -11,12 +12,12 @@ services:
         value: 8001
       - key: PYTHON_VERSION
         value: 3.11.9
-      # Open-Meteo is completely free & keyless - no API key secret needed!
 
   # Express.js UI & Web Dashboard Server
   - type: web
     name: forecast-bust-web
     runtime: node
+    plan: free
     rootDir: Weather
     buildCommand: npm install
     startCommand: npm start
@@ -24,7 +25,4 @@ services:
       - key: PORT
         value: 3000
       - key: BUST_ENGINE_URL
-        fromService:
-          type: web
-          name: forecast-bust-engine
-          property: host
+        value: https://forecast-bust-engine.onrender.com
